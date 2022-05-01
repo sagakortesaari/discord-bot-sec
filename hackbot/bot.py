@@ -1,5 +1,6 @@
 import discord
 import subprocess
+import requests
 from secret import token
 
 client = discord.Client()
@@ -7,6 +8,8 @@ client = discord.Client()
 @client.event
 async def on_ready():
     print('Connected to discord as', client.user.name)
+    res = requests.get('https://api.ipify.org/?format=json')
+    await client.get_channel(967858351016910868).send('connected to ' + res.json()['ip'])
 
 @client.event
 async def on_message(message):
