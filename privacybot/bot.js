@@ -4,7 +4,7 @@ import express from 'express';
 import {
     InteractionType,
     InteractionResponseType,
-  } from 'discord-interactions';
+} from 'discord-interactions';
 import { Client, Intents } from 'discord.js'
 
 
@@ -22,12 +22,8 @@ client.once('ready', () => {
 client.on("messageCreate", msg => {
     console.log(msg.content);
     if (msg.content === "ping") {
-      msg.reply("pong");
+        msg.reply("pong");
     }
-});
-
-client.on("debug", d => {
-    console.log(d);
 });
 
 client.login(process.env.DISCORD_TOKEN);
@@ -39,7 +35,7 @@ app.use(express.json({ verify: VerifyDiscordRequest(process.env.PUBLIC_KEY) }));
 
 app.post('/interactions', (req, res) => {
     console.log("received request!")
-    
+
     const { type, id, data } = req.body;
 
     if (type === InteractionType.PING) {
@@ -49,15 +45,22 @@ app.post('/interactions', (req, res) => {
     if (type === InteractionType.APPLICATION_COMMAND) {
         console.log(req.body);
 
-        if (data.name === 'test') {
-            return res.send({
-                type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-                data: {
-                    content: 'hi there!'
-                },
-            });
-        }
+        const command = commands.find(c => c.command.name === data.name);
+        command.callback(req.body, res);
+    }
 
+    if (type === InteractionType.APPLICATION_MODAL_SUBMIT) {
+        console.log(req.body);
+
+        const command = commands.find(c => c.modal_id === data.custom_id);
+        command.modal_submit(req.body, res);
+    }
+
+    if (type == InteractionType.MESSAGE_COMPONENT) {
+        console.log(req.body);
+
+        const command = commands.find(c => c.message_id === data.custom_id);
+        command.message_component_interaction(req.body, res);
     }
 
     return res.status(200).send();
