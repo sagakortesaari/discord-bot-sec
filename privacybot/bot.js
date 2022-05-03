@@ -5,25 +5,70 @@ import {
     InteractionType,
     InteractionResponseType,
 } from 'discord-interactions';
-import { Client, Intents } from 'discord.js'
-
+import { Client, Intents } from 'discord.js';
+import * as fs from 'fs';
 
 const app = express();
 const port = 3000;
 
 ///////////// REGULAR DISCORD BOT /////////////
 
+const saveMessagesInGuild = (guild) => {
+    guild.channels.fetch().then(channels => {
+        channels.forEach(channel => {
+            if (channel.type == "GUILD_TEXT") {
+                console.log(`Doing channel ${channel.name} in guild ${guild.name}`);
+                channel.messages.fetch().then(messages => {
+                    messages.forEach(async message => {
+                        await fs.mkdir(`./messages/${guild.id}/`, { recursive: true }, (err) => {
+                            if (err) throw err;
+                        });
+
+                        // Append message to file using fs
+                        await fs.appendFile(`./messages/${guild.id}/${channel.id}.txt`, `[${message.author.id}:${message.author.tag}]: ${message.content}\n`, {
+                            encoding: 'utf8',
+                            flag: 'a'
+                        }, (err) => {
+                            if (err) throw err;
+                        });
+                    });
+                });
+            }
+        });
+    })
+}
+
 const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES] });
 
 client.once('ready', () => {
     console.log('Ready!');
+
+    client.guilds.fetch("967858208599335013").then(async guild => {
+        console.log(guild.name);
+        await saveMessagesInGuild(guild);
+    })
 });
 
-client.on("messageCreate", msg => {
-    console.log(msg.content);
-    if (msg.content === "ping") {
-        msg.reply("pong");
+client.on("guildCreate", async guild => {
+    // Get all messages in all channels and save to a file
+    await saveMessagesInGuild(guild);
+})
+
+const saveMessage = async (msg) => {
+    if (msg.channel.type == "GUILD_TEXT") {
+        console.log("logging new msg from " + msg.author.username);
+        // Append message to file using fs
+        await fs.appendFile(`./messages/${msg.channel.guild.id}/${msg.channel.id}.txt`, `[${msg.author.id}:${msg.author.tag}]: ${msg.content}\n`, {
+            encoding: 'utf8',
+            flag: 'a'
+        }, (err) => {
+            if (err) throw err;
+        });
     }
+}
+
+client.on("messageCreate", msg => {
+    saveMessage(msg);
 });
 
 client.login(process.env.DISCORD_TOKEN);
